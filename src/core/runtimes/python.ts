@@ -9,5 +9,5 @@ export function detectPython(cwd: string): boolean {
   }
 
   const files = fs.readdirSync(cwd);
-  return files.some(f => f.endsWith(".py"));
+  return files.some((f) => f.endsWith(".py"));
 }
