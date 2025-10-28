@@ -1,23 +1,21 @@
 {
   "name": "nili",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "version": "0.1.0",
   "type": "commonjs",
-  "devDependencies": {
-    "@types/node": "^24.9.2",
-    "eslint": "^9.38.0",
-    "prettier": "^3.6.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+  "main": "dist/cli.js",
+  "bin": {
+    "nili": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js"
   },
   "dependencies": {
-    "commander": "^14.0.2"
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
   }
 }
