@@ -6,12 +6,18 @@ import path from "path";
 export function runRuntime(runtime: Runtime, cwd = process.cwd()): void {
   let command: string | null = null;
 
+  const cliFile = path.resolve(__dirname, "../cli.ts");
+  if (path.join(cwd, "index.js") === cliFile) {
+    console.log("[Nili] Skipping CLI itself");
+    return;
+  }
+
   switch (runtime) {
     case "node":
-      if (fs.existsSync(path.join(cwd, "package.json"))) {
-        command = "npm start";
-      } else {
+      if (fs.existsSync(path.join(cwd, "index.js"))) {
         command = "node index.js";
+      } else if (fs.existsSync(path.join(cwd, "package.json"))) {
+        command = "npm start";
       }
       break;
 
