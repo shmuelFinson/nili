@@ -1,71 +1,52 @@
-import { exec } from "child_process";
-import { Runtime } from "./runtimeDetector";
-import fs from "fs";
-import path from "path";
+import { spawn } from "child_process";
+import { chooseEntrypoint } from "./utils/entrypoint";
 
-export function runRuntime(runtime: Runtime, cwd = process.cwd()): void {
-  let command: string | null = null;
+export async function runRuntime(runtime: string, cwd: string) {
+  // Check for environment override
+  const envEntrypoint = process.env.NILI_ENTRYPOINT;
+  let entry: string | null = envEntrypoint ?? null;
 
-  const cliFile = path.resolve(__dirname, "../cli.ts");
-  if (path.join(cwd, "index.js") === cliFile) {
-    console.log("[Nili] Skipping CLI itself");
-    return;
+  if (!entry) {
+    entry = await chooseEntrypoint(runtime, cwd);
   }
+
+  if (!entry) {
+    console.error(`[Nili] No entrypoint found for runtime: ${runtime}`);
+    process.exit(1);
+  }
+
+  let command = "";
 
   switch (runtime) {
     case "node":
-      if (fs.existsSync(path.join(cwd, "index.js"))) {
-        command = "node index.js";
-      } else if (fs.existsSync(path.join(cwd, "package.json"))) {
-        command = "npm start";
-      }
+      command = entry.endsWith(".ts") ? `ts-node ${entry}` : `node ${entry}`;
       break;
-
     case "python":
-      if (fs.existsSync(path.join(cwd, "main.py"))) {
-        command = "python main.py";
-      }
+      command = `python ${entry}`;
       break;
-
-    case "go":
-      if (fs.existsSync(path.join(cwd, "main.go"))) {
-        command = "go run main.go";
-      }
-      break;
-
-    case "rust":
-      if (fs.existsSync(path.join(cwd, "Cargo.toml"))) {
-        command = "cargo run";
-      }
-      break;
-
-    case "java":
-      if (fs.existsSync(path.join(cwd, "pom.xml"))) {
-        command = "mvn exec:java";
-      } else if (fs.existsSync(path.join(cwd, "build.gradle"))) {
-        command = "gradle run";
-      }
-      break;
-
     case "ruby":
-      if (fs.existsSync(path.join(cwd, "main.rb"))) {
-        command = "ruby main.rb";
-      }
+      command = `ruby ${entry}`;
       break;
-
+    case "go":
+      command = `go run ${entry}`;
+      break;
+    case "rust":
+      command = `cargo run`;
+      break;
+    case "java":
+      command = `java ${entry}`;
+      break;
     default:
-      console.error(`[Nili] Unknown runtime: ${runtime}`);
-      return;
+      console.error(`[Nili] Unsupported runtime: ${runtime}`);
+      process.exit(1);
   }
 
-  if (!command) {
-    console.error(`[Nili] No entrypoint found for ${runtime}`);
-    return;
+  const [cmd, ...args] = command.split(" ");
+  if (!cmd) {
+    console.error("[Nili] Invalid command");
+    process.exit(1);
   }
+  const proc = spawn(cmd, args, { cwd, stdio: "inherit" });
 
-  console.log(`[Nili] Running: ${command}`);
-  const child = exec(command, { cwd });
-
-  child.stdout?.pipe(process.stdout);
-  child.stderr?.pipe(process.stderr);
+  proc.on("exit", (code) => process.exit(code ?? 0));
 }
