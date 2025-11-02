@@ -31,25 +31,27 @@ export function getEntrypoints(runtime: string, cwd: string): string[] {
 
 export async function chooseEntrypoint(
   runtime: string,
-  cwd: string
+  cwd: string,
+  entries?: string[]
 ): Promise<string | null> {
-  const entries = getEntrypoints(runtime, cwd);
+  // If entries weren’t passed, discover them
+  const resolvedEntries = entries ?? getEntrypoints(runtime, cwd);
 
-  if (entries.length === 0) {
+  if (resolvedEntries.length === 0) {
     return null;
   }
 
-  if (entries.length === 1) {
-    return entries[0] ?? null;
+  if (resolvedEntries.length === 1) {
+    return resolvedEntries[0] ?? null;
   }
 
-  // Multiple candidates found → prompt user
+  // Multiple candidates → prompt user
   const answer = await inquirer.prompt([
     {
       type: "list",
       name: "entry",
       message: `Multiple entrypoints found for ${runtime}, choose one to run:`,
-      choices: entries,
+      choices: resolvedEntries,
     },
   ]);
 
