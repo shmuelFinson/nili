@@ -14,9 +14,8 @@ export async function runRuntime(runtime: string, cwd: string) {
 
   // 🔹 Detect all entrypoints grouped by role
   const entrypointsByRole = getEntrypointsByRole(runtime, cwd) ?? {};
-  const roles = Object.keys(entrypointsByRole).filter(
-    (r) => (entrypointsByRole[r]?.length ?? 0) > 0
-  );
+  const roles = Object.keys(entrypointsByRole);
+
 
   let selectedRole: string | null = null;
 
