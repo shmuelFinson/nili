@@ -3,7 +3,7 @@
 import { Command } from "commander";
 import { detectRuntime } from "./core/runtimeDetector";
 import { runRuntime } from "./core/runtimeRunner";
-import path from "path/win32";
+import path from "path";
 import fs from "fs";
 import { runRuntimeWithConfig } from "./core/runtimeRunner";
 const program = new Command();
