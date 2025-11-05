@@ -18,6 +18,7 @@ program
   .command("run")
   .description("Detect runtime and run the project")
   .action(async () => {
+    console.log("[Nili] Starting runtime detection...");
     const cwd = process.cwd();
     const configPath = path.join(cwd, "nili.config.json");
     let runtime: string | null = null;
