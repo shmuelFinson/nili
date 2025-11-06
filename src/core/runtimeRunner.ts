@@ -2,18 +2,8 @@ import { spawn } from "child_process";
 import { chooseEntrypoint } from "./utils/entrypoint";
 import { getEntrypointsByRole } from "./entrypointDetector";
 import inquirer from "inquirer";
-import path from "path/win32";
-import fs from "fs";
+import { NiliConfig } from "./utils/config";
 
-interface RoleConfig {
-  entry: string;
-  runtime?: string;
-  runner?: string;
-}
-
-interface NiliConfig {
-  roles: Record<string, RoleConfig>;
-}
 /**
  * Runs the detected runtime and selects the appropriate entrypoint(s).
  * Handles multi-role detection (client, server, worker, etc.)

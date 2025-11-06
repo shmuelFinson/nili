@@ -1,48 +1,34 @@
-import fs from "fs";
 import path from "path";
+import { z } from "zod";
+import fs from "fs";
 
-export interface RoleConfig {
-  entry: string;
-  runtime?: string | undefined;
-  runner?: string | undefined;
-}
+const RoleConfigSchema = z.object({
+  entry: z.string(),
+  runtime: z.string().optional(),
+  runner: z.string().optional(),
+});
 
-export type NiliConfig = {
-  runtime?: string;
-  runner?: string;
-  roles?: Record<string, string | RoleConfig>;
-  defaultRole?: string;
-};
+const NiliConfigSchema = z.object({
+  roles: z.record(z.string(), RoleConfigSchema),
+});
 
-export function loadConfig(cwd: string): {
-  config: NiliConfig | null;
-  normalizedRoles: Record<string, RoleConfig>;
-} {
-  const candidates = [".nili.json", "nili.config.json"];
-  for (const filename of candidates) {
-    const fullPath = path.join(cwd, filename);
-    if (fs.existsSync(fullPath)) {
-      try {
-        const raw = JSON.parse(fs.readFileSync(fullPath, "utf8")) as NiliConfig;
-        const normalizedRoles = Object.fromEntries(
-          Object.entries(raw.roles ?? {}).map(([role, v]) => [
-            role,
-            typeof v === "string"
-              ? { entry: v }
-              : {
-                  entry: v.entry,
-                  runtime: v.runtime,
-                  runner: v.runner,
-                },
-          ])
-        );
-        return { config: raw, normalizedRoles };
-      } catch (err) {
-        console.error(`[Nili] Failed to parse config: ${fullPath}`, err);
-        return { config: null, normalizedRoles: {} };
+export type RoleConfig = z.infer<typeof RoleConfigSchema>;
+export type NiliConfig = z.infer<typeof NiliConfigSchema>;
+
+export function loadConfig(cwd: string) {
+  const fullPath = path.join(cwd, "nili.config.json");
+  if (fs.existsSync(fullPath)) {
+    try {
+      const raw = JSON.parse(fs.readFileSync(fullPath, "utf8"));
+      return NiliConfigSchema.parse(raw); // runtime validation
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        console.error("[Nili] Invalid nili.config.json:", err.issues);
+      } else {
+        console.error("[Nili] Failed to load config:", err);
       }
+      process.exit(1);
     }
   }
-
-  return { config: null, normalizedRoles: {} };
+  return null;
 }
