@@ -22,10 +22,11 @@ export function loadConfig(cwd: string) {
       const raw = JSON.parse(fs.readFileSync(fullPath, "utf8"));
       return NiliConfigSchema.parse(raw); // runtime validation
     } catch (err) {
-      console.error(
-        `[Nili] Failed to parse or validate config: ${fullPath}`,
-        err
-      );
+      if (err instanceof z.ZodError) {
+        console.error("[Nili] Invalid nili.config.json:", err.issues);
+      } else {
+        console.error("[Nili] Failed to load config:", err);
+      }
       process.exit(1);
     }
   }
