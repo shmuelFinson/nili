@@ -1,28 +1,33 @@
-import fs from "fs";
 import path from "path";
-import { cwd } from "process";
+import { z } from "zod";
+import fs from "fs";
 
-export interface RoleConfig {
-  entry: string;
-  runtime?: string;
-  runner?: string;
-}
+const RoleConfigSchema = z.object({
+  entry: z.string(),
+  runtime: z.string().optional(),
+  runner: z.string().optional(),
+});
 
-export interface NiliConfig {
-  roles: Record<string, RoleConfig>;
-}
+const NiliConfigSchema = z.object({
+  roles: z.record(z.string(), RoleConfigSchema),
+});
 
-export function loadConfig(cwd: string): NiliConfig | null {
+export type RoleConfig = z.infer<typeof RoleConfigSchema>;
+export type NiliConfig = z.infer<typeof NiliConfigSchema>;
+
+export function loadConfig(cwd: string) {
   const fullPath = path.join(cwd, "nili.config.json");
   if (fs.existsSync(fullPath)) {
     try {
-      const raw = JSON.parse(fs.readFileSync(fullPath, "utf8")) as NiliConfig;
-      return raw;
+      const raw = JSON.parse(fs.readFileSync(fullPath, "utf8"));
+      return NiliConfigSchema.parse(raw); // runtime validation
     } catch (err) {
-      console.error(`[Nili] Failed to parse config: ${fullPath}`, err);
-      return null;
+      console.error(
+        `[Nili] Failed to parse or validate config: ${fullPath}`,
+        err
+      );
+      process.exit(1);
     }
   }
-
   return null;
 }

@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "commander": "^11.1.0",
-    "inquirer": "^12.10.0"
+    "inquirer": "^12.10.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.9",
