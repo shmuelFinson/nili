@@ -6,6 +6,7 @@ import { runRuntime } from "./core/runtimeRunner";
 import path from "path";
 import fs from "fs";
 import { runRuntimeWithConfig } from "./core/runtimeRunner";
+import { loadConfig } from "./core/utils/config";
 const program = new Command();
 
 // ----------------- CLI -----------------
@@ -19,16 +20,12 @@ program
   .description("Detect runtime and run the project")
   .action(async () => {
     console.log("[Nili] Starting runtime detection...");
-    const cwd = process.cwd();
-    const configPath = path.join(cwd, "nili.config.json");
     let runtime: string | null = null;
-
-    if (fs.existsSync(configPath)) {
-        console.log("[Nili] Found nili.config.json, using config...");
-      // Load config instead of detecting
-      const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-      runtime = null; // runtime is per entry/role in config
-      await runRuntimeWithConfig(config, cwd); // new function to handle config
+    const cwd = process.cwd();
+    const config = loadConfig(cwd);
+    if (config) {
+      console.log("[Nili] Loaded configuration from nili.config.json");
+      await runRuntimeWithConfig(config, cwd);
     } else {
       // fallback: detect runtime dynamically
       runtime = detectRuntime(cwd);
