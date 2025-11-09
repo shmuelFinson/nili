@@ -6,6 +6,7 @@ const RoleConfigSchema = z.object({
   entry: z.string(),
   runtime: z.string().optional(),
   runner: z.string().optional(),
+  port: z.number().optional(),
 });
 
 const NiliConfigSchema = z.object({
@@ -15,7 +16,7 @@ const NiliConfigSchema = z.object({
 export type RoleConfig = z.infer<typeof RoleConfigSchema>;
 export type NiliConfig = z.infer<typeof NiliConfigSchema>;
 
-export function loadConfig(cwd: string) {
+export function loadConfig(cwd: string): NiliConfig | null {
   const fullPath = path.join(cwd, "nili.config.json");
   if (fs.existsSync(fullPath)) {
     try {
