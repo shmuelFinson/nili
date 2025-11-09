@@ -6,6 +6,7 @@ const RoleConfigSchema = z.object({
   entry: z.string(),
   runtime: z.string().optional(),
   runner: z.string().optional(),
+  port: z.number().optional(),
 });
 
 const NiliConfigSchema = z.object({
