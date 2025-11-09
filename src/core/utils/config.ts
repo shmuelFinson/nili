@@ -16,23 +16,7 @@ const NiliConfigSchema = z.object({
 export type RoleConfig = z.infer<typeof RoleConfigSchema>;
 export type NiliConfig = z.infer<typeof NiliConfigSchema>;
 
-export function loadConfig(cwd: string) {
-  const fullPath = path.join(cwd, "nili.config.json");
-  if (fs.existsSync(fullPath)) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(fullPath, "utf8"));
-      return NiliConfigSchema.parse(raw); // runtime validation
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        console.error("[Nili] Invalid nili.config.json:", err.issues);
-      } else {
-        console.error("[Nili] Failed to load config:", err);
-      }
-      process.exit(1);
-export type RoleConfig = z.infer<typeof RoleConfigSchema>;
-export type NiliConfig = z.infer<typeof NiliConfigSchema>;
-
-export function loadConfig(cwd: string) {
+export function loadConfig(cwd: string): NiliConfig | null {
   const fullPath = path.join(cwd, "nili.config.json");
   if (fs.existsSync(fullPath)) {
     try {
@@ -47,6 +31,5 @@ export function loadConfig(cwd: string) {
       process.exit(1);
     }
   }
-  return null;
   return null;
 }
