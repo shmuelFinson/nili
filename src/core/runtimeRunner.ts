@@ -167,17 +167,19 @@ export async function runRuntime(runtime: string, cwd: string) {
     const entries = entrypointsByRole[role] ?? [];
     if (entries.length === 0) continue;
 
+    let chosenEntries: string[] = [];
+
     if (entry) {
-      const filtered = entries.filter((e) => e === entry);
-      entriesToRun.push(...filtered);
+      chosenEntries = entries.filter((e) => e === entry);
     } else if (entries.length === 1) {
-      entriesToRun.push(entries[0] ?? "");
-    } else if (rolesToRun.length === 1) {
-      const chosen = await chooseEntrypoint(runtime, cwd, entries);
-      if (chosen) entriesToRun.push(chosen);
+      chosenEntries = [entries[0] ?? ""];
     } else {
-      entriesToRun.push(...entries);
+      // Prompt user for which entries to run for this role
+      const chosen = await chooseEntrypoint(runtime, cwd, entries);
+      if (chosen) chosenEntries = [chosen];
     }
+
+    entriesToRun.push(...chosenEntries);
   }
 
   if (entriesToRun.length === 0) {
