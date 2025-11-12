@@ -33,3 +33,24 @@ export function loadConfig(cwd: string): NiliConfig | null {
   }
   return null;
 }
+
+/** Default command per runtime */
+export function getDefaultCommand(runtime: string, entry: string) {
+  switch (runtime) {
+    case "node":
+      return entry.endsWith(".ts") ? `npx ts-node ${entry}` : `node ${entry}`;
+    case "python":
+      return `python3 ${entry}`;
+    case "ruby":
+      return `ruby ${entry}`;
+    case "go":
+      return `go run ${entry}`;
+    case "rust":
+      return `cargo run`;
+    case "java":
+      return `java ${entry}`;
+    default:
+      console.error(`[Nili] Unsupported runtime: ${runtime}`);
+      process.exit(1);
+  }
+}
