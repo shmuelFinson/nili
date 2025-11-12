@@ -5,6 +5,26 @@ import inquirer from "inquirer";
 import { NiliConfig } from "./utils/config";
 import getPort from "get-port";
 
+export async function promptForRoles(roles: string[]): Promise<string[]> {
+  const { selectedRoles } = await inquirer.prompt<{ selectedRoles: string[] }>([
+    {
+      type: "checkbox",
+      name: "selectedRoles",
+      message: "Multiple roles detected — select which ones to run:",
+      choices: [
+        ...roles.map((r) => ({ name: r, value: r })),
+        new inquirer.Separator(),
+        { name: "Run all", value: "__ALL__" },
+      ],
+      validate: (ans: unknown) =>
+        Array.isArray(ans) && ans.length > 0
+          ? true
+          : "Select at least one role to run.",
+    },
+  ]);
+
+  return selectedRoles.includes("__ALL__") ? roles : selectedRoles;
+}
 /**
  * Runs the detected runtime and selects the appropriate entrypoint(s).
  * Handles multi-role detection (client, server, worker, etc.)
@@ -19,6 +39,7 @@ export async function runRuntimeWithConfig(config: NiliConfig, cwd: string) {
   let selectedRole: string | null = null;
 
   if (roles.length > 1) {
+    const selectedRoles = await promptForRoles(roles);
     const answer = await inquirer.prompt([
       {
         type: "list",
@@ -36,54 +57,56 @@ export async function runRuntimeWithConfig(config: NiliConfig, cwd: string) {
 
   // 🔹 Assign ports dynamically if missing
   await Promise.all(
-  rolesToRun.map(async (role) => {
-    const roleConfig = config.roles?.[role];
-    if (!roleConfig) return; // skip invalid roles
-    if (!roleConfig.port) {
-      roleConfig.port = await getPort();
-    }
-  })
-);
+    rolesToRun.map(async (role) => {
+      const roleConfig = config.roles?.[role];
+      if (!roleConfig) return; // skip invalid roles
+      if (!roleConfig.port) {
+        roleConfig.port = await getPort();
+      }
+    })
+  );
 
   console.log(`[Nili] Starting ${rolesToRun.length} role(s) in parallel...\n`);
 
-  const processes = rolesToRun.map((role) => {
-    const roleConfig = config.roles[role];
-    if (!roleConfig?.entry) {
-      console.error(`[Nili] No entry defined for role: ${role}`);
-      return null;
-    }
+  const processes = rolesToRun
+    .map((role) => {
+      const roleConfig = config.roles[role];
+      if (!roleConfig?.entry) {
+        console.error(`[Nili] No entry defined for role: ${role}`);
+        return null;
+      }
 
-    const command = roleConfig.runner
-      ? `${roleConfig.runner} ${roleConfig.entry}`
-      : getDefaultCommand(roleConfig.runtime ?? "node", roleConfig.entry);
+      const command = roleConfig.runner
+        ? `${roleConfig.runner} ${roleConfig.entry}`
+        : getDefaultCommand(roleConfig.runtime ?? "node", roleConfig.entry);
 
-    console.log(
-      `[Nili] Running ${role}: ${command} (port ${roleConfig.port})`
-    );
+      console.log(
+        `[Nili] Running ${role}: ${command} (port ${roleConfig.port})`
+      );
 
-    const [cmd, ...args] = command.split(" ");
-    if (!cmd) {
-      console.error("[Nili] Invalid command");
-      process.exit(1);
-    }
+      const [cmd, ...args] = command.split(" ");
+      if (!cmd) {
+        console.error("[Nili] Invalid command");
+        process.exit(1);
+      }
 
-    const proc = spawn(cmd, args, {
-      cwd,
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        PORT: roleConfig.port?.toString() ?? "",
-        ROLE: role,
-      },
-    });
+      const proc = spawn(cmd, args, {
+        cwd,
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          PORT: roleConfig.port?.toString() ?? "",
+          ROLE: role,
+        },
+      });
 
-    proc.on("exit", (code) => {
-      console.log(`[Nili] Process for ${role} exited with code ${code}`);
-    });
+      proc.on("exit", (code) => {
+        console.log(`[Nili] Process for ${role} exited with code ${code}`);
+      });
 
-    return proc;
-  }).filter(Boolean);
+      return proc;
+    })
+    .filter(Boolean);
 
   // 🔹 Wait for all to exit before closing parent
   await Promise.all(
@@ -127,43 +150,32 @@ export async function runRuntime(runtime: string, cwd: string) {
   const entrypointsByRole = getEntrypointsByRole(runtime, cwd) ?? {};
   const roles = Object.keys(entrypointsByRole);
 
-  let selectedRole: string | null = null;
+  let selectedRoles: string[] = [];
 
-  // Step 1: Choose role
+  // 🔹 Step 1: Choose roles (allow multi-select)
   if (roles.length > 1) {
-    const answer = await inquirer.prompt([
-      {
-        type: "list",
-        name: "role",
-        message: "Multiple roles detected — which one do you want to run?",
-        choices: [...roles, new inquirer.Separator(), "Run all"],
-      },
-    ]);
-    selectedRole = answer.role === "Run all" ? null : answer.role;
+    selectedRoles = await promptForRoles(roles);
   } else if (roles.length === 1) {
-    selectedRole = roles[0] ?? null;
+    selectedRoles = [roles[0] ?? ""];
   }
 
   // Step 2: Gather entrypoints for chosen roles
-  const rolesToRun = selectedRole === null ? roles : [selectedRole];
+  const rolesToRun = selectedRoles;
   let entriesToRun: string[] = [];
 
   for (const role of rolesToRun) {
     const entries = entrypointsByRole[role] ?? [];
     if (entries.length === 0) continue;
 
-    // If user has NILI_ENTRYPOINT, filter to just that
     if (entry) {
       const filtered = entries.filter((e) => e === entry);
       entriesToRun.push(...filtered);
     } else if (entries.length === 1) {
       entriesToRun.push(entries[0] ?? "");
     } else if (rolesToRun.length === 1) {
-      // Single role, multiple entrypoints → prompt user
       const chosen = await chooseEntrypoint(runtime, cwd, entries);
       if (chosen) entriesToRun.push(chosen);
     } else {
-      // Multiple roles, multiple entrypoints → run all automatically
       entriesToRun.push(...entries);
     }
   }
@@ -173,7 +185,7 @@ export async function runRuntime(runtime: string, cwd: string) {
     process.exit(1);
   }
 
-  // Step 3: Assign ports dynamically if not provided via environment
+  // Step 3–5 remain unchanged
   const entryPorts = await Promise.all(
     entriesToRun.map(async (_, i) => {
       const envPort = process.env[`PORT_${i}`] || process.env.PORT;
@@ -181,9 +193,10 @@ export async function runRuntime(runtime: string, cwd: string) {
     })
   );
 
-  console.log(`[Nili] Running ${entriesToRun.length} entrypoint(s) in parallel...\n`);
+  console.log(
+    `[Nili] Running ${entriesToRun.length} entrypoint(s) in parallel...\n`
+  );
 
-  // Step 4: Spawn child processes
   const processes = entriesToRun.map((entryPoint, idx) => {
     const port = entryPorts[idx];
     const command = getDefaultCommand(runtime, entryPoint);
@@ -213,7 +226,6 @@ export async function runRuntime(runtime: string, cwd: string) {
     return proc;
   });
 
-  // Step 5: Wait for all processes to exit
   await Promise.all(
     processes.map(
       (p) => new Promise<void>((resolve) => p.on("exit", () => resolve()))
