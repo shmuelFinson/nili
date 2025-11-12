@@ -2,29 +2,9 @@ import { spawn } from "child_process";
 import { chooseEntrypoint } from "./utils/entrypoint";
 import { getEntrypointsByRole } from "./entrypointDetector";
 import inquirer from "inquirer";
-import { NiliConfig } from "./utils/config";
+import { getDefaultCommand, NiliConfig, promptForRoles } from "./utils/config";
 import getPort from "get-port";
 
-export async function promptForRoles(roles: string[]): Promise<string[]> {
-  const { selectedRoles } = await inquirer.prompt<{ selectedRoles: string[] }>([
-    {
-      type: "checkbox",
-      name: "selectedRoles",
-      message: "Multiple roles detected — select which ones to run:",
-      choices: [
-        ...roles.map((r) => ({ name: r, value: r })),
-        new inquirer.Separator(),
-        { name: "Run all", value: "__ALL__" },
-      ],
-      validate: (ans: unknown) =>
-        Array.isArray(ans) && ans.length > 0
-          ? true
-          : "Select at least one role to run.",
-    },
-  ]);
-
-  return selectedRoles.includes("__ALL__") ? roles : selectedRoles;
-}
 /**
  * Runs the detected runtime and selects the appropriate entrypoint(s).
  * Handles multi-role detection (client, server, worker, etc.)
@@ -39,7 +19,6 @@ export async function runRuntimeWithConfig(config: NiliConfig, cwd: string) {
   let selectedRole: string | null = null;
 
   if (roles.length > 1) {
-    const selectedRoles = await promptForRoles(roles);
     const answer = await inquirer.prompt([
       {
         type: "list",
@@ -116,27 +95,6 @@ export async function runRuntimeWithConfig(config: NiliConfig, cwd: string) {
   );
 
   console.log("[Nili] All roles have exited.");
-}
-
-/** Default command per runtime */
-function getDefaultCommand(runtime: string, entry: string) {
-  switch (runtime) {
-    case "node":
-      return entry.endsWith(".ts") ? `npx ts-node ${entry}` : `node ${entry}`;
-    case "python":
-      return `python3 ${entry}`;
-    case "ruby":
-      return `ruby ${entry}`;
-    case "go":
-      return `go run ${entry}`;
-    case "rust":
-      return `cargo run`;
-    case "java":
-      return `java ${entry}`;
-    default:
-      console.error(`[Nili] Unsupported runtime: ${runtime}`);
-      process.exit(1);
-  }
 }
 
 /**
